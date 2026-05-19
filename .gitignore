@@ -1,0 +1,16 @@
+# Ejecutables compilados locales
+bin/
+GOChat
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de configuración local y bases de datos históricas de testeo
+.shchat.json
+.gochat_history.json
+
+# Herramientas de edición y logs
+*.log
+.DS_Store
