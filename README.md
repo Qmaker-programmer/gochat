@@ -31,7 +31,7 @@ make run
 Dentro de la interfaz de la TUI puedes usar los siguientes comandos nativos:
 * `/clear`
 * `/exit`
-* `CTRL+C
+* `CTRL+C`
 
 # Compilacion y distribuciòn
 **El proyecto incluye un Makefile automatizado para realizar compilación cruzada estática optimizada (-ldflags="-s -w"):**
