@@ -1,6 +1,11 @@
 # 🍵 GOChat
 
+<p align="center">
+  <img src="preview.png" alt="Vista previa de GOChat" width="550" />
+</p>
+
 Un clon de chat P2P hiper-minimalista inspirado en la arquitectura **IRC**, construido en **Go** utilizando el ecosistema moderno de TUIs de Charm (**Bubble Tea** y **Lip Gloss**).
+
 
 ## 💎 Características
 

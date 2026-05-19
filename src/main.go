@@ -75,7 +75,6 @@ func init() {
 	configFile = filepath.Join(home, ".shchat.json")
 }
 
-// Lector de red compatible con el loop nativo de Bubble Tea
 func readNetMessages(conn net.Conn) text.Cmd {
 	return func() text.Msg {
 		scanner := bufio.NewScanner(conn)
@@ -98,7 +97,7 @@ func main() {
 	m := model{
 		nick:     nick,
 		isHost:   opcion == "1",
-		peerNick: "Tu amigo",
+		peerNick: "Usuario",
 	}
 
 	home, _ := os.UserHomeDir()
@@ -115,11 +114,12 @@ func main() {
 	}
 
 	ti := textinput.New()
-	ti.Placeholder = "Escribe un mensaje aquí... (/exit para salir)"
+	ti.Placeholder = "Escribe un mensaje aquí... (Usa Flechas/PgUp/PgDn para scroll)"
 	ti.Focus()
 	ti.Prompt = lipgloss.NewStyle().Foreground(purple).Render("> ")
 	ti.CharLimit = 120
 
+	// El tamaño interno del viewport calza exacto con el chatBoxStyle
 	vp := viewport.New(72, 14)
 	m.input = ti
 	m.viewport = vp
@@ -154,6 +154,11 @@ func (m model) Init() text.Cmd {
 }
 
 func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
+	var (
+		cmd  text.Cmd
+		cmds []text.Cmd
+	)
+
 	switch msg := msg.(type) {
 
 	case connectedMsg:
@@ -165,7 +170,6 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 		m.conn = msg.conn
 		m.connected = true
 
-		// IRC Handshake Protocol
 		m.conn.Write([]byte("NICK_HANDSHAKE:" + m.nick + "\n"))
 
 		if m.isHost && len(m.messages) > 0 {
@@ -176,7 +180,6 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 			}
 		}
 
-		// Disparamos la lectura del primer mensaje
 		return m, readNetMessages(m.conn)
 
 	case repoMsg:
@@ -189,7 +192,6 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 			return m, nil
 		}
 
-		// Filtrar comandos internos estilo IRC
 		if strings.HasPrefix(line, "NICK_HANDSHAKE:") {
 			m.peerNick = strings.TrimPrefix(line, "NICK_HANDSHAKE:")
 			m.messages = append(m.messages, lipgloss.NewStyle().Foreground(green).Render("✔ Conectado con "+m.peerNick))
@@ -205,8 +207,6 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 
 		m.messages = append(m.messages, line)
 		m.updateViewport()
-		
-		// SEGUIR ESCUCHANDO (Encadenamiento recursivo seguro en Bubble Tea)
 		return m, readNetMessages(m.conn)
 
 	case text.KeyMsg:
@@ -214,6 +214,12 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 		case text.KeyCtrlC:
 			if m.conn != nil { m.conn.Close() }
 			return m, text.Quit
+
+		// --- CONTROL DE SCROLL IRC-LIKE ---
+		case text.KeyUp, text.KeyDown, text.KeyPgUp, text.KeyPgDown:
+			// Pasamos las teclas de dirección directo al viewport para que maneje el scroll
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
 
 		case text.KeyEnter:
 			val := strings.TrimSpace(m.input.Value())
@@ -250,9 +256,10 @@ func (m model) Update(msg text.Msg) (text.Model, text.Cmd) {
 		}
 	}
 
-	var cmd text.Cmd
+	// El input sigue capturando el texto normal de las letras
 	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+	return m, text.Batch(cmds...)
 }
 
 func (m *model) updateViewport() {
@@ -265,6 +272,8 @@ func (m *model) updateViewport() {
 	} else {
 		m.viewport.SetContent(strings.Join(m.messages, "\n"))
 	}
+	
+	// Auto-scroll al fondo cuando cae un mensaje nuevo
 	m.viewport.GotoBottom()
 }
 
